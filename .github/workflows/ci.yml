@@ -17,15 +17,18 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          submodules: recursive
 
       - name: Build
         run: |
           # set a phony project key
           echo "CONFIG_MEMFAULT_PROJECT_KEY=\"1234\"" >> sdkconfig.defaults
+          . ${IDF_PATH}/export.sh
           idf.py build
 
       - name: Archive release
         uses: actions/upload-artifact@v3
         with:
           name: elf
-          path: build/*.elf
+          path: build/*.elf.memfault_log_fmt
