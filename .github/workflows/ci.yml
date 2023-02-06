@@ -1,0 +1,31 @@
+name: Build app
+
+on:
+  push:
+    branches: [main]
+
+  pull_request:
+    branches: [main]
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    container:
+      image: espressif/idf:release-v5.0
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build
+        run: |
+          # set a phony project key
+          echo "CONFIG_MEMFAULT_PROJECT_KEY=\"1234\"" >> sdkconfig.defaults
+          idf.py build
+
+      - name: Archive release
+        uses: actions/upload-artifact@v3
+        with:
+          name: elf
+          path: build/*.elf
