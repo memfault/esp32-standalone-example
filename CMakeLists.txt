@@ -15,8 +15,18 @@ if(DEFINED IDF_VERSION_MAJOR)
   endif()
 endif()
 
+# Bring in Memfault SDK. Associate it with the memfault-platform component
+# instead of main.
+set(MEMFAULT_PLATFORM_PORT_COMPONENTS memfault-platform)
 get_filename_component(memfault_firmare_sdk_dir third-party/memfault-firmware-sdk ABSOLUTE)
 include(${memfault_firmare_sdk_dir}/ports/esp_idf/memfault.cmake)
+
+# Add the local components explicity. Normally these would be in a top-level
+# "components" directory, but we can also do it manually to place them anywhere
+set(EXTRA_COMPONENT_DIRS
+  ${EXTRA_COMPONENT_DIRS}
+  ${CMAKE_CURRENT_LIST_DIR}/memfault-platform
+)
 
 # NOTE: This include also applies global compiler options, make sure
 # this happens first before defining other targets!
