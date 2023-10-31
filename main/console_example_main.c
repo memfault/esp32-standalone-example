@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "app_memfault_transport.h"
 #include "argtable3/argtable3.h"
 #include "cmd_decl.h"
 #include "driver/uart.h"
@@ -32,6 +33,7 @@
 #include "memfault/esp_port/version.h"
 #include "nvs.h"
 #include "nvs_flash.h"
+#include "settings.h"
 
 static const char *TAG = "example";
 
@@ -47,7 +49,13 @@ static const char *TAG = "example";
 static void initialize_filesystem() {
   static wl_handle_t wl_handle;
   const esp_vfs_fat_mount_config_t mount_config = {.max_files = 4, .format_if_mount_failed = true};
-  esp_err_t err = esp_vfs_fat_spiflash_mount(MOUNT_PATH, "storage", &mount_config, &wl_handle);
+  esp_err_t err =
+  #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+    esp_vfs_fat_spiflash_mount_rw_wl
+  #else
+    esp_vfs_fat_spiflash_mount
+  #endif
+    (MOUNT_PATH, "storage", &mount_config, &wl_handle);
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "Failed to mount FATFS (%s)", esp_err_to_name(err));
     return;
@@ -74,10 +82,17 @@ static void initialize_console() {
   setvbuf(stdin, NULL, _IONBF, 0);
   setvbuf(stdout, NULL, _IONBF, 0);
 
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 3, 0)
+  /* Minicom, screen, idf_monitor send CR when ENTER key is pressed */
+  esp_vfs_dev_uart_port_set_rx_line_endings(CONFIG_ESP_CONSOLE_UART_NUM, ESP_LINE_ENDINGS_CR);
+  /* Move the caret to the beginning of the next line on '\n' */
+  esp_vfs_dev_uart_port_set_tx_line_endings(CONFIG_ESP_CONSOLE_UART_NUM, ESP_LINE_ENDINGS_CRLF);
+#else
   /* Minicom, screen, idf_monitor send CR when ENTER key is pressed */
   esp_vfs_dev_uart_set_rx_line_endings(ESP_LINE_ENDINGS_CR);
   /* Move the caret to the beginning of the next line on '\n' */
   esp_vfs_dev_uart_set_tx_line_endings(ESP_LINE_ENDINGS_CRLF);
+#endif
 
   /* Install UART driver for interrupt-driven reads and writes */
   ESP_ERROR_CHECK(uart_driver_install(CONFIG_CONSOLE_UART_NUM, 256, 0, 0, NULL, 0));
@@ -211,6 +226,8 @@ static void prv_poster_task(void *args) {
   const TickType_t ota_check_interval = pdMS_TO_TICKS(60 * 60 * 1000);
   TickType_t ota_last_check_time = xTaskGetTickCount() - ota_check_interval;
 
+  app_memfault_transport_init();
+
   MEMFAULT_LOG_INFO("Data poster task up and running every %" PRIu32 "s.", interval_sec);
 
   while (true) {
@@ -222,7 +239,7 @@ static void prv_poster_task(void *args) {
     // if connected, post any memfault data
     if (memfault_esp_port_wifi_connected()) {
       MEMFAULT_LOG_DEBUG("Checking for memfault data to send");
-      int err = memfault_esp_port_http_client_post_data();
+      int err = app_memfault_transport_send_chunks();
       // if the check-in succeeded, set green, otherwise clear.
       // gives a quick eyeball check that the app is alive and well
       led_set_color((err == 0) ? kLedColor_Green : kLedColor_Red);
@@ -320,8 +337,6 @@ void app_main() {
 #if !CONFIG_MEMFAULT_AUTOMATIC_INIT
   memfault_boot();
 #endif
-  extern void memfault_platform_device_info_boot(void);
-  memfault_platform_device_info_boot();
   memfault_device_info_dump();
 
   g_unaligned_buffer = &s_my_buf[1];
@@ -349,6 +364,15 @@ void app_main() {
   register_system();
   register_wifi();
   register_app();
+  settings_register_shell_commands();
+
+  // Attempt to load project key from nvs
+  static char project_key[MEMFAULT_PROJECT_KEY_LEN + 1] = {0};
+  int err = wifi_get_project_key(project_key, sizeof(project_key));
+  if (err == 0) {
+    project_key[sizeof(project_key) - 1] = '\0';
+    g_mflt_http_client_config.api_key = project_key;
+  }
 
 #if MEMFAULT_COMPACT_LOG_ENABLE
   MEMFAULT_COMPACT_LOG_SAVE(kMemfaultPlatformLogLevel_Info, "This is a compact log example");
@@ -403,7 +427,7 @@ void app_main() {
     } else if (err == ESP_ERR_INVALID_ARG) {
       // command was empty
     } else if (err == ESP_OK && ret != ESP_OK) {
-      printf("Command returned non-zero error code: 0x%x (%s)\n", ret, esp_err_to_name(err));
+      printf("Command returned non-zero error code: 0x%x (%s)\n", ret, esp_err_to_name(ret));
     } else if (err != ESP_OK) {
       printf("Internal error: %s\n", esp_err_to_name(err));
     }
