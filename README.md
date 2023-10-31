@@ -1,30 +1,38 @@
-# ESP32 Standalone Memfault Demo Application
+# esp32 Demo Application
 
-This Demo App is based on the example in the Memfault Firmware SDK:
+This Demo App is based on the console example from ESP-IDF, which can be found
+here relative to the ESP-IDF SDK root folder:
 
-https://github.com/memfault/memfault-firmware-sdk/tree/0.39.0/examples/esp32
+- `examples/system/console/advanced/`
 
-It also showcases including the Memfault SDK as a submodule for an ESP-IDF
-project.
+## Configuring for MQTT
 
-The submodule was added with this command:
+This application includes an option to send Memfault data over MQTT. This option requires a few extra pieces to set up.
+You can either follow the steps outlined here or use your own MQTT setup.
 
-```bash
-❯ git submodule add https://github.com/memfault/memfault-firmware-sdk.git \
-  third-party/memfault-firmware-sdk
-```
+### Broker Setup
 
-When cloning this repo, either use the `--recursive` flag or update submodules
-after cloning:
+1. Install a local installtion of Cedalo by following the [installation guide](https://docs.cedalo.com/management-center/installation/)
+2. Login to Cedalo at <http://localhost:8088>
+3. Create a new client login for the device
+   - Ensure device client has the "client" role to allow publishing data
+4. Create a new client login for the Python service
+   - Ensure Python service client has "client" role to allow subscribing to data
 
-```bash
-❯ git clone --recursive https://github.com/memfault/esp32-standalone-example
-# or
-❯ git clone https://github.com/memfault/esp32-standalone-example
-❯ cd esp32-standalone-example
-❯ git submodule update --init --recursive
-```
+### Service Setup
 
-## Building
+1. Modify the script found in Docs->Best Practices->MQTT with Memfault with the the following:
+   1. The service client login information previously created
+   2. Connection info for your local broker
+   3. Map of Memfault projects to project keys
+2. Start the service by running `python mqtt.py`
 
-Can be built using `idf.py build` as usual.
+### Device Setup
+
+1. Make the following modifications to `main/app_memfault_transport_mqtt.c`:
+   1. Update `MEMFAULT_PROJECT` macro with your project's name
+   2. Update `s_mqtt_config` with your setup's IP address, and MQTT client username and password
+2. Clean your existing build with `idf.py fullclean && rm sdkconfig`
+3. Set your target: `idf.py set-target <esp32_platform_name>`
+4. Build your image: `idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.mqtt" build`
+5. Flash to your device using `idf.py flash`
