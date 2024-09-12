@@ -15,18 +15,32 @@ if(DEFINED IDF_VERSION_MAJOR)
   endif()
 endif()
 
-# Look for the Memfault SDK in a subdirectory first
-get_filename_component(memfault_firmare_sdk_dir third-party/memfault-firmware-sdk ABSOLUTE)
-if(NOT EXISTS ${memfault_firmare_sdk_dir})
-get_filename_component(memfault_firmare_sdk_dir ../../../../ ABSOLUTE)
+# Look for the Memfault SDK in a subdirectory first, when this app is used
+# standalone (not from within the Memfault SDK)
+get_filename_component(memfault_firmware_sdk_dir third-party/memfault-firmware-sdk ABSOLUTE)
+if(NOT EXISTS ${memfault_firmware_sdk_dir})
+get_filename_component(memfault_firmware_sdk_dir ../../../../ ABSOLUTE)
 endif()
-include(${memfault_firmare_sdk_dir}/ports/esp_idf/memfault.cmake)
+include(${memfault_firmware_sdk_dir}/ports/esp_idf/memfault.cmake)
 
 # NOTE: This include also applies global compiler options, make sure
 # this happens first before defining other targets!
 # The esp-idf project() macro creates a project_name.elf target:
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+
+# Wrap the mbedtls netif read/write functions, for instrumentation.
+# These MUST be before the project() function below, or they are ignored
+if(IDF_VERSION_MAJOR VERSION_GREATER_EQUAL 4)
+  idf_build_set_property(LINK_OPTIONS "-Wl,--wrap=mbedtls_net_send,--wrap=mbedtls_net_recv" APPEND)
+endif()
+
 project(${PROJECT_NAME})
+
+# Enable a compilation error if any deprecated APIs are used. This helps detect
+# bleeding edge changes in the ESP-IDF.
+if (IDF_VERSION_MAJOR VERSION_GREATER_EQUAL 5)
+  idf_build_set_property(COMPILE_OPTIONS "-Werror=deprecated-declarations" APPEND)
+endif()
 
 # Check for invalid partition table configurations
 if (
@@ -50,16 +64,20 @@ if (INVALID_PARTITION_TABLE)
   )
 endif()
 
-# Add the Memfault Build ID so each build can have a unique version.
-set(IDF_PROJECT_EXECUTABLE ${PROJECT_NAME}.elf)
-add_custom_command(TARGET ${IDF_PROJECT_EXECUTABLE}
-  POST_BUILD
-  # Compute and insert the build id
-  COMMAND python ${memfault_firmare_sdk_dir}/scripts/fw_build_id.py ${IDF_PROJECT_EXECUTABLE}
-  # Save a copy of the ELF that includes the 'log_fmt' section
-  BYPRODUCTS ${IDF_PROJECT_EXECUTABLE}.memfault_log_fmt
-  COMMAND ${CMAKE_COMMAND} -E copy ${IDF_PROJECT_EXECUTABLE} ${IDF_PROJECT_EXECUTABLE}.memfault_log_fmt
-  COMMAND ${CMAKE_COMMAND} -E echo "*** NOTE: the symbol file to upload to app.memfault.com is ${IDF_PROJECT_EXECUTABLE}.memfault_log_fmt ***"
-  # Remove the 'log_fmt' compact log section, which confuses elf2image
-  COMMAND ${CMAKE_OBJCOPY} --remove-section log_fmt ${IDF_PROJECT_EXECUTABLE}
-)
+if (CONFIG_MEMFAULT)
+  # Add the Memfault Build ID so each build can have a unique version.
+  set(IDF_PROJECT_EXECUTABLE ${PROJECT_NAME}.elf)
+  add_custom_command(TARGET ${IDF_PROJECT_EXECUTABLE}
+    POST_BUILD
+    # Compute and insert the build id
+    COMMAND python ${memfault_firmware_sdk_dir}/scripts/fw_build_id.py ${IDF_PROJECT_EXECUTABLE}
+    # Save a copy of the ELF that includes the 'log_fmt' section
+    BYPRODUCTS ${IDF_PROJECT_EXECUTABLE}.memfault_log_fmt
+    # Compress debug sections; this reduces the elf file size from ~10MB -> ~4.8MB
+    COMMAND ${CMAKE_OBJCOPY} --compress-debug-sections ${IDF_PROJECT_EXECUTABLE}
+    COMMAND ${CMAKE_COMMAND} -E copy ${IDF_PROJECT_EXECUTABLE} ${IDF_PROJECT_EXECUTABLE}.memfault_log_fmt
+    COMMAND ${CMAKE_COMMAND} -E echo "*** NOTE: the symbol file to upload to app.memfault.com is ${IDF_PROJECT_EXECUTABLE}.memfault_log_fmt ***"
+    # Remove the 'log_fmt' compact log section, which confuses elf2image
+    COMMAND ${CMAKE_OBJCOPY} --remove-section log_fmt ${IDF_PROJECT_EXECUTABLE}
+  )
+endif()  # NOT CONFIG_MEMFAULT_DISABLE

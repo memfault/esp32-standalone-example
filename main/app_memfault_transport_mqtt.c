@@ -29,9 +29,9 @@ static esp_mqtt_client_handle_t s_mqtt_client = NULL;
 static esp_mqtt5_publish_property_config_t s_publish_property = {
   .topic_alias = 1,
 };
-static char s_topic_string[128] = {0};
+static char s_topic_string[128] = { 0 };
 
-static uint8_t s_chunk_data[1024] = {0};
+static uint8_t s_chunk_data[1024] = { 0 };
 
 static void mqtt_event_handler(MEMFAULT_UNUSED void *handler_args,
                                MEMFAULT_UNUSED esp_event_base_t base,
@@ -59,7 +59,7 @@ static void prv_close_client(void) {
   if (rv) {
     ESP_LOGW(TAG, "Failed to destroy client[%d]", rv);
   }
-  memfault_metrics_heartbeat_timer_stop(MEMFAULT_METRICS_KEY(mqtt_conn_uptime));
+  MEMFAULT_METRIC_TIMER_STOP(mqtt_conn_uptime);
 
   s_mqtt_client = NULL;
 }
@@ -91,14 +91,14 @@ static int prv_create_client(void) {
   rv = xSemaphoreTake(s_mqtt_connected, (1000 * 10) / portTICK_PERIOD_MS);
   if (rv != pdTRUE) {
     ESP_LOGE(TAG, "MQTT client failed to connect[%d]", rv);
-    memfault_metrics_heartbeat_timer_start(MEMFAULT_METRICS_KEY(mqtt_conn_downtime));
+    MEMFAULT_METRIC_TIMER_START(mqtt_conn_downtime);
     prv_close_client();
     return -1;
   }
 
   // Update connection metrics when connected
-  memfault_metrics_heartbeat_timer_stop(MEMFAULT_METRICS_KEY(mqtt_conn_downtime));
-  memfault_metrics_heartbeat_timer_start(MEMFAULT_METRICS_KEY(mqtt_conn_uptime));
+  MEMFAULT_METRIC_TIMER_STOP(mqtt_conn_downtime);
+  MEMFAULT_METRIC_TIMER_START(mqtt_conn_uptime);
 
   // Set topic alias before publishing
   rv = esp_mqtt5_client_set_publish_property(s_mqtt_client, &s_publish_property);
@@ -109,7 +109,7 @@ static int prv_create_client(void) {
 }
 
 static const char *prv_get_device_serial(void) {
-  sMemfaultDeviceInfo info = {0};
+  sMemfaultDeviceInfo info = { 0 };
   memfault_platform_get_device_info(&info);
   return info.device_serial;
 }
@@ -161,8 +161,8 @@ int app_memfault_transport_send_chunks(void) {
       break;
     }
 
-    memfault_metrics_heartbeat_add(MEMFAULT_METRICS_KEY(mqtt_publish_bytes), chunk_size);
-    memfault_metrics_heartbeat_add(MEMFAULT_METRICS_KEY(mqtt_publish_count), 1);
+    MEMFAULT_METRIC_ADD(mqtt_publish_bytes, chunk_size);
+    MEMFAULT_METRIC_ADD(mqtt_publish_count, 1);
     ESP_LOGD(TAG, "chunk[%d], len[%zu] published to %s", rv, chunk_size, s_topic_string);
   }
 

@@ -2,15 +2,17 @@ menu "Memfault App Configuration"
 
 config STORE_HISTORY
     bool "Store command history in flash"
-    default y
+    default n
     help
         Linenoise line editing library provides functions to save and load
-        command history. If this option is enabled, initalizes a FAT filesystem
+        command history. If this option is enabled, initializes a FAT filesystem
         and uses it to store command history.
+        Note that this adds a ~22kB heap allocation on system boot.
 
 config MEMFAULT_APP_OTA
     bool "Enable automatic periodic check+update for OTA"
     default y
+    depends on MEMFAULT
     help
         Enables the Memfault OTA subsystem. This will periodically check for
         updates and apply them if available.
@@ -18,6 +20,7 @@ config MEMFAULT_APP_OTA
 config MEMFAULT_APP_WIFI_AUTOJOIN
     bool "Enable automatic WiFi connection"
     default y
+    depends on MEMFAULT
     help
         Automatically join if credentials are configured.
 
@@ -30,6 +33,7 @@ choice APP_MEMFAULT_TRANSPORT
     config APP_MEMFAULT_TRANSPORT_MQTT
         bool "MQTT"
         select MQTT_PROTOCOL_5
+        depends on !MEMFAULT_HTTP_PERIODIC_UPLOAD
 endchoice
 
 if APP_MEMFAULT_TRANSPORT_MQTT
@@ -78,7 +82,22 @@ config BLINK_GPIO
         GPIO number (IOxx) to blink on and off or the RMT signal for the addressable LED.
         Some GPIOs are used for other purposes (flash connections, etc.) and cannot be used to blink.
 
-# esp32c3 specific settings
+config BUTTON_GPIO
+    int "Input pin for the EN button on the dev board"
+    # https://dl.espressif.com/dl/schematics/esp32_devkitc_v4_sch.pdf
+    # https://dl.espressif.com/dl/schematics/esp-idf/SCH_ESP32-S2-DEVKITC-1_V1_20220817.pdf
+    # https://dl.espressif.com/dl/schematics/SCH_ESP32-S3-DevKitC-1_V1.1_20221130.pdf
+    default 0 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
+    # https://dl.espressif.com/dl/schematics/SCH_ESP32-C3-DEVKITC-02_V1_1_20210126A.pdf
+    # https://dl.espressif.com/dl/schematics/SCH_ESP32-C3-DEVKITM-1_V1_20200915A.pdf
+    # https://docs.espressif.com/projects/esp-dev-kits/en/latest/_static/esp32-c6-devkitc-1/schematics/esp32-c6-devkitc-1-schematics_v1.4.pdf
+    default 9 if IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32C6
+    default 0
+    help
+        GPIO pin number for the BOOT button. Used to trigger a crash for testing.
+
+
+# esp32c3/c6 specific settings
 if IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32C6
     # Default optimize for size due to increase in binary size
     # This can be changed in root -> Compiler Options
