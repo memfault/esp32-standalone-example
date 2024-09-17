@@ -10,3 +10,5 @@ dependencies:
     rules: # will add dependency only when all if clauses are True
       - if: "idf_version >=5.0" # supports all SimpleSpec grammars (https://python-semanticversion.readthedocs.io/en/latest/reference.html#semantic_version.SimpleSpec)
       - if: "target not in [esp32]" # supports boolean operator ==, !=, in, not in.
+  memfault-firmware-sdk:
+    path: /tmp/memfault-firmware-sdk
