@@ -63,21 +63,3 @@ if (INVALID_PARTITION_TABLE)
     If this error occurs repeatedly run `idf.py fullclean && rm sdkconfig`"
   )
 endif()
-
-if (CONFIG_MEMFAULT)
-  # Add the Memfault Build ID so each build can have a unique version.
-  set(IDF_PROJECT_EXECUTABLE ${PROJECT_NAME}.elf)
-  add_custom_command(TARGET ${IDF_PROJECT_EXECUTABLE}
-    POST_BUILD
-    # Compute and insert the build id
-    COMMAND python ${memfault_firmware_sdk_dir}/scripts/fw_build_id.py ${IDF_PROJECT_EXECUTABLE}
-    # Save a copy of the ELF that includes the 'log_fmt' section
-    BYPRODUCTS ${IDF_PROJECT_EXECUTABLE}.memfault_log_fmt
-    # Compress debug sections; this reduces the elf file size from ~10MB -> ~4.8MB
-    COMMAND ${CMAKE_OBJCOPY} --compress-debug-sections ${IDF_PROJECT_EXECUTABLE}
-    COMMAND ${CMAKE_COMMAND} -E copy ${IDF_PROJECT_EXECUTABLE} ${IDF_PROJECT_EXECUTABLE}.memfault_log_fmt
-    COMMAND ${CMAKE_COMMAND} -E echo "*** NOTE: the symbol file to upload to app.memfault.com is ${IDF_PROJECT_EXECUTABLE}.memfault_log_fmt ***"
-    # Remove the 'log_fmt' compact log section, which confuses elf2image
-    COMMAND ${CMAKE_OBJCOPY} --remove-section log_fmt ${IDF_PROJECT_EXECUTABLE}
-  )
-endif()  # NOT CONFIG_MEMFAULT_DISABLE

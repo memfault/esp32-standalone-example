@@ -1,7 +1,7 @@
 //! @file
 //!
 //! Copyright (c) Memfault, Inc.
-//! See License.txt for details
+//! See LICENSE for details
 //!
 //! Version of cmd_wifi.c that uses the legacy wifi API, for ESP-IDF v3.
 
@@ -33,12 +33,6 @@ static char s_wifi_pass[WIFI_CREDS_MAX_SIZE];
 
 static EventGroupHandle_t wifi_event_group;
 const int CONNECTED_BIT = BIT0;
-
-// this type changed in ESP-IDF v4.0, to 'nvs_handle_t'; add a backwards-compat
-// typedef
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 0, 0)
-typedef nvs_handle nvs_handle_t;
-#endif
 
 int wifi_get_project_key(char *project_key, size_t project_key_len) {
   // Configurable project key not supported, project key must be compiled in via

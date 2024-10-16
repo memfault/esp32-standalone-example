@@ -12,7 +12,7 @@ You can either follow the steps outlined here or use your own MQTT setup.
 
 ### Broker Setup
 
-1. Install a local installtion of Cedalo by following the [installation guide](https://docs.cedalo.com/management-center/installation/)
+1. Install a local installation of Cedalo by following the [installation guide](https://docs.cedalo.com/management-center/installation/)
 2. Login to Cedalo at <http://localhost:8088>
 3. Create a new client login for the device
    - Ensure device client has the "client" role to allow publishing data
@@ -21,7 +21,8 @@ You can either follow the steps outlined here or use your own MQTT setup.
 
 ### Service Setup
 
-1. Modify the script found in Docs->Best Practices->MQTT with Memfault with the the following:
+1. Modify the script found in [Docs->Best Practices->MQTT](https://docs.memfault.com/docs/best-practices/mqtt-with-memfault#service-examples)
+   with Memfault with the the following:
    1. The service client login information previously created
    2. Connection info for your local broker
    3. Map of Memfault projects to project keys
