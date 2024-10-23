@@ -11,12 +11,12 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     container:
-      image: espressif/idf:release-v5.0
+      image: espressif/idf:release-v5.3
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
 
@@ -28,7 +28,38 @@ jobs:
           idf.py build
 
       - name: Archive release
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: elf
+          path: build/*.elf.memfault_log_fmt
+
+  build-with-component:
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:release-v5.3
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build
+        run: |
+          # set a phony project key
+          echo "CONFIG_MEMFAULT_PROJECT_KEY=\"1234\"" >> sdkconfig.defaults
+          . ${IDF_PATH}/export.sh
+
+          # add the Memfaut component: first get the current submodule version
+          SDK_VERSION=$(grep -oP 'VERSION:\s*\K[^[:space:]]+' third-party/memfault-firmware-sdk/VERSION)
+          # delete the submodule
+          rm -rf third-party/memfault-firmware-sdk
+          # add the dep with the same version
+          idf.py add-dependency "memfault/memfault-firmware-sdk^${SDK_VERSION}"
+
+          MEMFAULT_SDK_COMPONENT=1 idf.py build
+
+      - name: Archive release
+        uses: actions/upload-artifact@v4
+        with:
+          name: elf.component
           path: build/*.elf.memfault_log_fmt

@@ -15,13 +15,17 @@ if(DEFINED IDF_VERSION_MAJOR)
   endif()
 endif()
 
-# Look for the Memfault SDK in a subdirectory first, when this app is used
-# standalone (not from within the Memfault SDK)
-get_filename_component(memfault_firmware_sdk_dir third-party/memfault-firmware-sdk ABSOLUTE)
-if(NOT EXISTS ${memfault_firmware_sdk_dir})
-get_filename_component(memfault_firmware_sdk_dir ../../../../ ABSOLUTE)
+# Pull in the Memfault SDK if we're not building as a component, indicated by
+# the absence of the MEMFAULT_SDK_COMPONENT env var.
+if(NOT DEFINED ENV{MEMFAULT_SDK_COMPONENT})
+  # Look for the Memfault SDK in a subdirectory first, when this app is used
+  # standalone (not from within the Memfault SDK)
+  get_filename_component(memfault_firmware_sdk_dir third-party/memfault-firmware-sdk ABSOLUTE)
+  if(NOT EXISTS ${memfault_firmware_sdk_dir})
+    get_filename_component(memfault_firmware_sdk_dir ../../../../ ABSOLUTE)
+  endif()
+  include(${memfault_firmware_sdk_dir}/ports/esp_idf/memfault.cmake)
 endif()
-include(${memfault_firmware_sdk_dir}/ports/esp_idf/memfault.cmake)
 
 # NOTE: This include also applies global compiler options, make sure
 # this happens first before defining other targets!
