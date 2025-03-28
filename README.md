@@ -5,6 +5,17 @@ here relative to the ESP-IDF SDK root folder:
 
 - `examples/system/console/advanced/`
 
+```bash
+$ git submodule update --init --recursive
+$ echo 'CONFIG_MEMFAULT_PROJECT_KEY="YOUR_KEY"' >> sdkconfig.defaults
+# by default, 'idf.py build' will target esp32
+$ idf.py build
+# flash the board and start the serial monitor
+$ idf.py flash monitor
+```
+
+Get your project key from https://mflt.io/project-key.
+
 ## Configuring for MQTT
 
 This application includes an option to send Memfault data over MQTT. This option requires a few extra pieces to set up.
