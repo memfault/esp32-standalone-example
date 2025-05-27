@@ -6,7 +6,10 @@
 
 dependencies:
   espressif/led_strip:
-    version: "^2.0.0"
+    version: ^2.0.0
     rules: # will add dependency only when all if clauses are True
-      - if: "idf_version >=5.0" # supports all SimpleSpec grammars (https://python-semanticversion.readthedocs.io/en/latest/reference.html#semantic_version.SimpleSpec)
-      - if: "target not in [esp32]" # supports boolean operator ==, !=, in, not in.
+    - if: idf_version >=5.0     # supports all SimpleSpec grammars (https://python-semanticversion.readthedocs.io/en/latest/reference.html#semantic_version.SimpleSpec)
+    - if: target not in [esp32]     # supports boolean operator ==, !=, in, not in.
+  memfault/memfault-firmware-sdk:
+    git: https://github.com/memfault/memfault-firmware-sdk
+    version: 1.25.0-rc1+esp32-deep-sleep
